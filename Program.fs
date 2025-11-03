@@ -5,7 +5,6 @@ module Program
 open System
 open System.IO
 open ParseToken
-open HtmlRenderer
 
 // The EntryPoint attribute marks the main function of the application.
 [<EntryPoint>]
