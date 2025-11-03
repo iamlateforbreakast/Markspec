@@ -4,7 +4,7 @@ module Program
 
 open System
 open System.IO
-open Parser
+open ParseToken
 open HtmlRenderer
 
 // The EntryPoint attribute marks the main function of the application.
@@ -22,13 +22,15 @@ let main argv =
         let htmlFooterText = File.ReadAllText(htmlFooterPath)
 
         // Pass the string to your parser
-        let parsedDocument = Parser.parse markdownText
-        let htmlOutput = HtmlRenderer.render parsedDocument
+        let tokens = ParseToken.parseToken markdownText
+        printToken tokens
+        //let parsedDocument = Parser.parse markdownText
+        //let htmlOutput = HtmlRenderer.render parsedDocument
     
         // Write the HTML string to a file
-        File.WriteAllText(outputFilePath, htmlHeaderText)
-        File.AppendAllText(outputFilePath, htmlOutput)
-        File.AppendAllText(outputFilePath, htmlFooterText)
+        //File.WriteAllText(outputFilePath, htmlHeaderText)
+        //File.AppendAllText(outputFilePath, htmlOutput)
+        //File.AppendAllText(outputFilePath, htmlFooterText)
     
         printfn "Markdown parsed and saved to %s" outputFilePath
     with
