@@ -8,38 +8,64 @@ open ParseToken
 open MarkdownTypes
 open HtmlRenderer
 
+let printUsage() =
+    printfn "Usage: markspec <input.md> [output.html]"
+    printfn "  input.md     - Path to input Markdown file"
+    printfn "  output.html  - Path to output HTML file (optional, defaults to input.md with .html extension)"
+
 // The EntryPoint attribute marks the main function of the application.
 [<EntryPoint>]
 let main argv =
-    // The markdown content to be parsed.
-    let filePath = @"..\\..\\..\\test.md"
-    let outputFilePath = @"..\\..\\..\\output.html"
-    let htmlHeaderPath = @"..\\..\\..\\htmlHeader.html"
-    let htmlFooterPath = @"..\\..\\..\\htmlFooter.html"
-    try
-        // Read the entire file content into a string
-        let markdownText = File.ReadAllText(filePath)
-        let htmlHeaderText = File.ReadAllText(htmlHeaderPath)
-        let htmlFooterText = File.ReadAllText(htmlFooterPath)
+    match argv with
+    | [||] ->
+        printUsage()
+        1  // Return non-zero to indicate error
+    | args ->
+        try
+            // Get input path from first argument
+            let inputPath = Path.GetFullPath(args.[0])
+            
+            // Default output path: same as input but .html extension
+            let outputPath = 
+                match args with
+                | [| _; outputArg |] -> Path.GetFullPath(outputArg)
+                | _ -> Path.ChangeExtension(inputPath, ".html")
+                
+            // Get header/footer relative to input file directory
+            let baseDir = Path.GetDirectoryName(inputPath)
+            let htmlHeaderPath = Path.Combine(baseDir, "htmlHeader.html")
+            let htmlFooterPath = Path.Combine(baseDir, "htmlFooter.html")
+            
+            // Read input files
+            let markdownText = File.ReadAllText(inputPath)
+            let htmlHeaderText = 
+                if File.Exists(htmlHeaderPath) then File.ReadAllText(htmlHeaderPath)
+                else "<!DOCTYPE html>\n<html>\n<head>\n<title>Markdown Output</title>\n</head>\n<body>\n"
+            let htmlFooterText = 
+                if File.Exists(htmlFooterPath) then File.ReadAllText(htmlFooterPath)
+                else "\n</body>\n</html>"
 
-        // Pass the string to your parser
-        let document = ParseToken.parseDocument markdownText
-
-        (document |> List.iter printBlock)
-        //let parsedDocument = Parser.parse markdownText
-        //let htmlOutput = HtmlRenderer.render parsedDocument
+            // Parse and render
+            let parsedDocument = ParseToken.parseDocument markdownText
+            let htmlOutput = HtmlRenderer.render parsedDocument
     
-        // Write the HTML string to a file
-        //File.WriteAllText(outputFilePath, htmlHeaderText)
-        //File.AppendAllText(outputFilePath, htmlOutput)
-        //File.AppendAllText(outputFilePath, htmlFooterText)
+            // Write the HTML output
+            File.WriteAllText(outputPath, htmlHeaderText)
+            File.AppendAllText(outputPath, htmlOutput)
+            File.AppendAllText(outputPath, htmlFooterText)
     
-        printfn "Markdown parsed and saved to %s" outputFilePath
-    with
-    | :? FileNotFoundException ->
-        printfn $"Error: The file '{filePath}' was not found."
-    | ex ->
-        printfn $"An unexpected error occurred: %s{ex.Message}"
-        printfn $"Exception type: %A{ex.GetType()}" // Use GetType() to see the exact type
-    // Return 0 to indicate successful execution.
-    0
+            printfn "Successfully converted '%s' to '%s'" inputPath outputPath
+            0  // Return 0 for success
+        with
+        | :? IndexOutOfRangeException ->
+            printUsage()
+            1
+        | :? FileNotFoundException as ex ->
+            printfn "Error: Input file not found: %s" ex.FileName
+            1
+        | :? IOException as ex ->
+            printfn "Error accessing file: %s" ex.Message
+            1
+        | ex ->
+            printfn "Error: %s" ex.Message
+            1
