@@ -19,7 +19,12 @@ module HtmlRenderer
             | Heading(level, spans) -> sprintf "<h%d>%s</h%d>" level (spans |> List.map renderSpan |> String.concat "") level
             | Paragraph spans -> sprintf "<p>%s</p>" (spans |> List.map renderSpan |> String.concat "")
             | UnorderedList items ->
-                let listItems = items |> List.map (fun blk -> sprintf "<li>%s</li>" (renderBlocks blk)) |> String.concat ""
+                let listItems = 
+                    items 
+                    |> List.map (fun item -> 
+                        sprintf "<li>%s</li>" (renderBlocks item.Content)
+                    ) 
+                    |> String.concat ""
                 sprintf "<ul>%s</ul>" listItems
             | HorizontalRule -> "<hr />"
             | Blockquote subBlocks -> $"""<blockquote>%s{ renderBlocks subBlocks }</blockquote>"""
