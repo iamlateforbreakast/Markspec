@@ -26,12 +26,27 @@ module MarkdownTypes
     type Block =
         | Paragraph of Span list
         | Heading of int * Span list // `int` for the heading level (1-6)
-        | UnorderedList of Block list list
+        | UnorderedList of ListItem list
         | CodeBlock of language: string option * content: string // Added CodeBlock typ
-        | OrderedList of Block list list
+        | OrderedList of ListItem list
         | Blockquote of Block list
         | HorizontalRule
         | RawHtml of string
+        | EOF
+
+    // Use Option<int> to store the starting index of an ordered list (1 for 1), None for unordered.
+    and ListItem = {
+        IndentLevel: int;
+        Marker: string; // e.g., "-", "+", "1)", "2)"
+        Content: Block list;
+        ListType: Option<int>; 
+    }
 
     type Document = Block list
+
+    let printBlock (block : Block) =
+        match block with
+        | Heading _ -> printfn "Heading"
+        | Paragraph _ -> printfn "Paragraph"
+        | _ -> printfn "Unknown block"
 
