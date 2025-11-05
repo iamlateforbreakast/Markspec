@@ -5,6 +5,8 @@ module Program
 open System
 open System.IO
 open ParseToken
+open MarkdownTypes
+open HtmlRenderer
 
 // The EntryPoint attribute marks the main function of the application.
 [<EntryPoint>]
@@ -21,8 +23,9 @@ let main argv =
         let htmlFooterText = File.ReadAllText(htmlFooterPath)
 
         // Pass the string to your parser
-        let tokens = ParseToken.parseToken markdownText
-        printToken tokens
+        let document = ParseToken.parseDocument markdownText
+
+        (document |> List.iter printBlock)
         //let parsedDocument = Parser.parse markdownText
         //let htmlOutput = HtmlRenderer.render parsedDocument
     
