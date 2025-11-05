@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.fsproj', '**/*.csproj') }}
+
+      - name: Restore dependencies
+        run: dotnet restore Markspec.fsproj
+
+      - name: Install dotnet-format
+        run: |
+          dotnet tool install -g dotnet-format || true
+          echo "## Add dotnet tools to PATH"
+          echo "PATH=$HOME/.dotnet/tools:$PATH" >> $GITHUB_ENV
+
+      - name: Check formatting (dotnet-format)
+        run: dotnet format --verify-no-changes
+
+      - name: Build
+        run: dotnet build Markspec.fsproj --no-restore --configuration Release
+
+      - name: Run tests (if any)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Searching for test projects..."
+          tests=$(git ls-files "**/*Tests*.fsproj" "**/*Tests*.csproj" || true)
+          if [ -n "$tests" ]; then
+            echo "Found test projects:"
+            echo "$tests"
+            dotnet test --no-build --configuration Release
+          else
+            echo "No test projects found; skipping tests"
+          fi
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifact
+          path: |
+            **/bin/Release/net9.0/**

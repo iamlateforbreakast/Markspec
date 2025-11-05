@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish-binaries:
+    name: Publish self-contained binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rid: [ linux-x64, linux-arm64, win-x64, osx-x64 ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore Markspec.fsproj
+
+      - name: Build
+        run: dotnet build Markspec.fsproj --configuration Release --no-restore
+
+      - name: Publish (self-contained) for ${{ matrix.rid }}
+        run: |
+          mkdir -p ./artifacts/${{ matrix.rid }}
+          dotnet publish Markspec.fsproj -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true -o ./artifacts/${{ matrix.rid }}
+
+      - name: Upload published binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-${{ matrix.rid }}
+          path: ./artifacts/${{ matrix.rid }}
+
+  create-release:
+    name: Create release and publish packages
+    runs-on: ubuntu-latest
+    needs: publish-binaries
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore and Pack NuGet package
+        run: |
+          dotnet restore Markspec.fsproj
+          dotnet pack Markspec.fsproj -c Release -o ./artifacts
+
+      - name: Download published binaries
+        uses: actions/download-artifact@v4
+        with:
+          # Download all artifacts uploaded by the matrix job
+          path: ./downloaded_artifacts
+
+      - name: Prepare release artifacts folder
+        run: |
+          mkdir -p ./release-artifacts
+          # move nupkg(s)
+          cp -r ./artifacts/* ./release-artifacts/ || true
+          # move published binaries
+          cp -r ./downloaded_artifacts/* ./release-artifacts/ || true
+          ls -la ./release-artifacts || true
+
+      - name: Create GitHub release (includes binaries + nupkg)
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.ref }}
+          files: ./release-artifacts/**
+
+      - name: Publish to NuGet (optional)
+        if: ${{ secrets.NUGET_API_KEY != '' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          echo "Publishing nupkg(s) to nuget.org"
+          ls -la ./artifacts || true
+          dotnet nuget push "./artifacts/*.nupkg" -k "$NUGET_API_KEY" -s https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Upload release artifacts to workflow (archive)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: ./release-artifacts
