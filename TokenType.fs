@@ -110,9 +110,9 @@ module TokenType
         | '#' :: rest -> processHash content
         | '\'' :: rest -> processQuote content
         | ' ' :: rest -> processWhiteSpace content
-        | c :: rest -> readTextToken content
-        | _ -> (Text {Text = "Error"}, []) // Never executed
+        | _ -> readTextToken content  // Handle any other character as text
 
+    /// Debug helper to print token information
     let printToken (token : Token) =
         match token with
         | Text t -> printfn "Token: Text { Text = \"%s\"}" t.Text
@@ -124,6 +124,6 @@ module TokenType
         | CloseSquareBracket -> printfn "Token: Close Square Bracket"
         | OpenBracket -> printfn "Token: Open Bracket"
         | CloseBracket -> printf "Token: Close Bracket"
-        | EOF -> printfn "Token: EOF"
-        | EOL e -> printfn "Token: EOL { Type = %d }" e.Type
-        | _ -> printfn "Unknown token" // Never executed
+            | Exclamation -> printfn "Token: Exclamation"
+            | EOF -> printfn "Token: EOF"
+            | EOL e -> printfn "Token: EOL { Type = %d }" e.Type
