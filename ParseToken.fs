@@ -18,7 +18,13 @@ module ParseToken
             let tokens = context.Tokens
             match tokens with
                 | Token.EOF :: _ -> (text, context)
-                | _ -> (text, context)
+                | Token.EOL _ :: rest -> (text, {context with Tokens = rest})
+                | Token.Text t :: rest -> loop {context with Tokens = rest} (text + t.Text)
+                | _ ->
+                    let (t, b) = getToken context.Buffer
+                    let (l,c) = loop {context with Buffer = b; Tokens = t :: context.Tokens} text
+                    (l, c)
+
         let (s,c) = loop context ""
         (Text s,c)
 
