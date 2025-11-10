@@ -60,8 +60,9 @@ module ParseToken
               | Token.EOL _ :: rest -> {context with Line = context.Line + 1; Column = 1}
               | Token.Hash h :: rest when (h.Level <= 6) -> 
                     let (l,c) = parseSpan {context with Tokens = rest}
-                    let b = Heading (h.Level, l)
-                    {c with Blocks = b :: context.Blocks} 
+                    let nh = (Heading (h.Level,  l))
+                    let nb = (nh :: context.Blocks)
+                    {c with Blocks = nb} 
               | _ -> 
                 let (t, b) = getToken context.Buffer
                 loop {context with Buffer = b; Tokens = t :: context.Tokens}
