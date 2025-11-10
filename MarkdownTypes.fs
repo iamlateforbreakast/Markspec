@@ -46,7 +46,7 @@ module MarkdownTypes
 
     let printBlock (block : Block) =
         match block with
-        | Heading _ -> printfn "Heading"
+        | Heading (level, spans) -> printfn "Block : Heading { Level = %d }" level
         | Paragraph _ -> printfn "Paragraph"
         | _ -> printfn "Unknown block"
 
