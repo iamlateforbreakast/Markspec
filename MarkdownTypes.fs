@@ -48,5 +48,6 @@ module MarkdownTypes
         match block with
         | Heading (level, spans) -> printfn "Block : Heading { Level = %d }" level
         | Paragraph _ -> printfn "Paragraph"
+        | EOF -> printfn "Block : EOF"
         | _ -> printfn "Unknown block"
 
