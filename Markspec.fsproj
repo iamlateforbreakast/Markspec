@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,9 +7,14 @@
 
   <ItemGroup>
     <Compile Include="TokenType.fs" />
-    <Compile Include="MarkdownTypes.fs" />
+    <Compile Include="MarkDownTypes.fs" />
+    <Compile Include="ParseContext.fs" />
     <Compile Include="ParseToken.fs" />
-    <Compile Include="HtmlRender.fs" />
+    <Content Include="custom.css" />
+    <Content Include="htmlFooter.html" />
+    <Content Include="htmlHeader.html" />
+    <None Include="test.md" />
+    <Compile Include="HtmlRenderer.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
