@@ -36,7 +36,7 @@ module ParseToken
                 | Token.EOL _ :: rest -> (spans, {context with Line = context.Line + 1})
                 | Token.WhiteSpace _ :: rest ->
                     let (t, b) = getToken context.Buffer
-                    let (l,c) = loop {context with Buffer = b; Tokens = t :: context.Tokens} spans
+                    let (l,c) = loop {context with Buffer = b; Tokens = t :: rest} spans
                     (l, c)
                 | Token.Text t :: rest -> 
                      let (s,c) = parseText context
@@ -53,27 +53,37 @@ module ParseToken
 
     let rec parseBlock (inputBuffer : string) : Document =
         let rec loop (context : Context) : Context =
-           let a = (context.Tokens |> List.rev)
-           let b = (context.Blocks |> List.rev)
-           match a with
-              | Token.EOF :: rest -> {context with Blocks = Block.EOF :: b; Tokens = rest}
-              | Token.EOL _ :: rest -> {context with Line = context.Line + 1; Column = 1}
-              | Token.Hash h :: rest when (h.Level <= 6) -> 
-                    let (l,c) = parseSpan {context with Tokens = rest}
+            // Ensure tokens are populated
+            let currentContext =
+                if (List.isEmpty context.Tokens && not (List.isEmpty context.Buffer)) then
+                    let (t, b) = getToken context.Buffer
+                    {context with Buffer = b; Tokens = t :: context.Tokens}
+                else
+                    context
+            match currentContext.Tokens with
+               | Token.EOF :: _ -> 
+                    {currentContext with Blocks = (Block.EOF :: currentContext.Blocks); Tokens = []}
+               | Token.EOL _ :: rest -> {currentContext with Line = currentContext.Line + 1; Column = 1}
+               | Token.Hash h :: rest when (h.Level <= 6) -> 
+                    let (l,c) = parseSpan {currentContext with Tokens = rest}
                     let nh = (Heading (h.Level,  l))
-                    let nb = (nh :: context.Blocks)
-                    {c with Blocks = nb} 
-              | _ -> 
-                let (t, b) = getToken context.Buffer
-                loop {context with Buffer = b; Tokens = t :: context.Tokens}
-              // CodeBlocks
-              // HorizontalRule
-              // UnorderedList
-              // OrderedList
-              // BlockQuote
-              // RawHtml
+                    let nb = (nh :: currentContext.Blocks)
+                    loop {c with Blocks = nb} 
+               | _ -> 
+                    // Example handling for text as paragraph
+                    let (spans, c) = parseSpan currentContext
+                    if List.isEmpty spans then // If parseSpan returned nothing useful, keep looping to next token
+                        loop c
+                    else
+                        loop {c with Blocks = Paragraph spans :: c.Blocks}
+                    // CodeBlocks
+                    // HorizontalRule
+                    // UnorderedList
+                    // OrderedList
+                    // BlockQuote
+                    // RawHtml
 
 
         let c = {Buffer = (inputBuffer |> Seq.toList); Line = 1; Column = 1; Spans = []; Tokens = []; Blocks = []}
         let d = loop c
-        d.Blocks
+        d.Blocks |> List.rev
