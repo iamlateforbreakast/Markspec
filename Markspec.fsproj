@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <Compile Include="TokenType.fs" />
-    <Compile Include="MarkDownTypes.fs" />
+    <Compile Include="MarkdownTypes.fs" />
     <Compile Include="ParseContext.fs" />
     <Compile Include="ParseToken.fs" />
     <Content Include="custom.css" />
