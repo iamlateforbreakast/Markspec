@@ -31,7 +31,8 @@ module TokenType
         }
 
     type TokenEOL =
-        { Type : int }
+        { Type : int 
+        }
 
     type Token =
         | Text of TokenText
@@ -69,7 +70,7 @@ module TokenType
     let processStar (content : char list) : Token * char list =
         let rec loop(content : char list)(length : int) =
             match content with
-            | '*' :: remainingChars -> loop content (length + 1)
+            | '*' :: remainingChars -> loop remainingChars (length + 1)
             | ' ' :: remainingChars -> (remainingChars, (length + 1))
             | _ -> (content, length)
         let (a,b) = loop content 0
@@ -124,6 +125,6 @@ module TokenType
         | CloseSquareBracket -> printfn "Token: Close Square Bracket"
         | OpenBracket -> printfn "Token: Open Bracket"
         | CloseBracket -> printf "Token: Close Bracket"
-            | Exclamation -> printfn "Token: Exclamation"
-            | EOF -> printfn "Token: EOF"
-            | EOL e -> printfn "Token: EOL { Type = %d }" e.Type
+        | Exclamation -> printfn "Token: Exclamation"
+        | EOF -> printfn "Token: EOF"
+        | EOL e -> printfn "Token: EOL { Type = %d }" e.Type
