@@ -34,6 +34,10 @@ module TokenType
         { Type : int 
         }
 
+    type TokenOrderedListItem =
+        { Level : int
+        }
+
     type Token =
         | Text of TokenText
         | Hash of TokenHash
@@ -45,6 +49,7 @@ module TokenType
         | CloseSquareBracket
         | OpenBracket
         | CloseBracket
+        | OrderedListItem of TokenOrderedListItem
         | EOL of TokenEOL
         | EOF
        
@@ -53,6 +58,9 @@ module TokenType
 
     let isWhiteSpace (c : char) =
         ((c = ' ') || (c = '\t'))
+
+    let isDigit (c: char) =
+        ((c >= '0' ) && (c<= '9'))
 
     let readTextToken (content : char list) : Token  * char list =
         let rec loop(content : char list)(text: char list) =
@@ -101,16 +109,32 @@ module TokenType
         let (a,b) = loop content 0
         (Quote {Level = b}, a) 
 
+    let processOrderedListItem (content : char list) : Token * char list =
+        let rec loop(content : char list)(number : string) =
+            match content with
+            | ')' :: remainingChars -> (remainingChars, number)
+            | '.' :: remainingChars -> (remainingChars, number)
+            | c :: remainingChars when isDigit c -> loop remainingChars (number + (string c))
+            | _ -> (content, "Error")
+        let (a,b) = loop content ""
+        (OrderedListItem {Level = (int b)}, a)
+
     let getToken (content : char list) : Token * char list =
         match content with
         | [] -> (EOF, [] )
         | '\r' :: '\n' :: rest -> (EOL {Type = 1}, rest) // Windows EOL
         | '\n' :: rest -> (EOL {Type = 2}, rest) // Linux EOL
         | '\r' :: rest -> (EOL {Type = 3}, rest) // Mac EOL
+        | '!' :: rest -> (Exclamation, rest)
+        | '[' :: rest -> (OpenSquareBracket, rest)
+        | ']' :: rest -> (CloseSquareBracket, rest)
+        | '(' :: rest -> (OpenBracket, rest)
+        | ')' :: rest -> (CloseBracket, rest)
         | '*' :: rest -> processStar content
         | '#' :: rest -> processHash content
         | '\'' :: rest -> processQuote content
         | ' ' :: rest -> processWhiteSpace content
+        | c :: rest when isDigit c -> processOrderedListItem content
         | _ -> readTextToken content  // Handle any other character as text
 
     /// Debug helper to print token information
@@ -126,5 +150,6 @@ module TokenType
         | OpenBracket -> printfn "Token: Open Bracket"
         | CloseBracket -> printf "Token: Close Bracket"
         | Exclamation -> printfn "Token: Exclamation"
+        | OrderedListItem o -> printfn "Token: OrderedListItem { Level = %d }" o.Level
         | EOF -> printfn "Token: EOF"
         | EOL e -> printfn "Token: EOL { Type = %d }" e.Type
