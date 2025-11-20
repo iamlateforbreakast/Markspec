@@ -100,7 +100,62 @@ module ParseToken
       // Call the loop and reverse the accumulated list at the end to maintain original order
       let (s, c) = loop context []
       (List.rev s, c)
+  (* 
+  Parses the content *after* the list marker. 
+  This is tricky as list content can span multiple lines and contain other blocks.
+  For simplicity here, we assume content is just a single paragraph (Span list), 
+  but your types allow for Block list content. A full implementation would need a 
+  recursive call to parseBlock for indented lines.
+  We will use parseSpan for simple content here.
+  *)
+  let parseListItemContent (context : Context) : Span list * Context =
+   // For a simple single-line list item, parseSpan is sufficient
+   parseSpan context
 
+  (* 
+     New function to parse ordered lists.
+     It expects the current token to be an OrderedListItem and continues 
+     parsing subsequent items until a non-list item or EOF is reached.
+  *)
+  let rec parseOrderedList (context : Context) : Block * Context =
+      let rec loop (context : Context) (items : ListItem list) : ListItem list * Context =
+          // Ensure tokens are populated for lookahead
+          let currentContext =
+              if (List.isEmpty context.Tokens && not (List.isEmpty context.Buffer)) then
+                  let (t, b) = getToken context.Buffer
+                  {context with Buffer = b; Tokens = t :: context.Tokens}
+              else
+                  context
+
+          match currentContext.Tokens with
+          // Check for the next item marker
+          | Token.OrderedListItem info :: rest -> 
+              let level = info.Level // Extract the actual number/level
+
+              let contextAfterMarker = {currentContext with Tokens = rest}
+              let (contentSpans, contextAfterContent) = parseListItemContent contextAfterMarker
+
+              // Wrap the spans in a Paragraph block (assuming contentSpans type is List<Span>)
+              let contentBlocks = 
+                  if List.isEmpty contentSpans then []
+                  else [Paragraph contentSpans]
+
+              let newItem: ListItem = {
+                  IndentLevel = 0; // You don't parse indent level in getToken yet
+                  Marker = string level; // Use the level as the marker text
+                  Content = contentBlocks; 
+                  ListType = Some level; // Use the parsed number as start index
+              }
+              // Recurse to find the next item in the sequence
+              loop contextAfterContent (items @ [newItem])
+          | _ ->
+              // Stop when a non-list item token is encountered
+              (items, currentContext)
+
+      // Start the loop and wrap the result in the Block.OrderedList type
+      let (items, finalContext) = loop context []
+      (Block.OrderedList items, finalContext)
+      
   let rec parseBlock (inputBuffer : string) : Document =
       let rec loop (context : Context) : Context =
           // Ensure tokens are populated
@@ -119,7 +174,10 @@ module ParseToken
                   let (l,c) = parseSpan {currentContext with Tokens = rest}
                   let nh = (Heading (h.Level,  l))
                   let nb = (nh :: currentContext.Blocks)
-                  loop {c with Blocks = nb} 
+                  loop {c with Blocks = nb}
+             | Token.OrderedListItem _ :: _ ->
+                 let (olBlock, c) = parseOrderedList currentContext
+                 loop {c with Blocks = olBlock :: c.Blocks}
              | _ -> 
                   // Example handling for text as paragraph
                   let (spans, c) = parseSpan currentContext
